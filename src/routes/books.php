@@ -1,116 +1,93 @@
 <?php
+
 use \Psr\Http\Message\ServerRequestInterface as Request;
 use \Psr\Http\Message\ResponseInterface as Response;
+use \Models\Book;
 
-// Get All Books
-$app->get('/api/books', function (Request $request, Response $response){
-    $sql = "SELECT * FROM books";
+$app->group('/books', function () {
 
-    try {
-        $db = new db();
-        $db = $db->connect();
+    // Get All Books
+    $this->get('', function (Request $request, Response $response) {
+        $bookRepository = $this->getBookRepository;
+        $books = $bookRepository->getAllBooks();
 
-        $stmt = $db->query($sql);
-        $books = $stmt->fetchAll(PDO::FETCH_OBJ);
-        $db = null;
-        echo json_encode($books);
-    } catch (PDOException $e) {
-        echo '{"error": {"text": ' . $e->getMessage() . '}}';
-    }
-});
+        if (count($books) > 0) {
+            foreach ($books as $book) {
+                echo "Book Title: " . $book->getTitle() . "<br>" .
+                     "Book Author: " . $book->getAuthor() . "<br>" .
+                     "Book Published Date: " . $book->getDatePublished() . "<br>" .
+                     "Number of Pages: " . $book->getPages() . "<br><br>";
+            }
+        } else {
+            echo "There are no books.";
+        }
+    });
 
-// Get Single Book
-$app->get('/api/books/{id}', function (Request $request, Response $response){
-    $id = $request->getAttribute('id');
-    $sql = "SELECT * FROM books WHERE id = $id";
+    // Get Single Book By ID
+    $this->get('/{id}', function (Request $request, Response $response) {
+        $id = $request->getAttribute('id');
 
-    try {
-        $db = new db();
-        $db = $db->connect();
+        $bookRepository = $this->getBookRepository;
+        $book = $bookRepository->getBookById((int) $id);
 
-        $stmt = $db->query($sql);
-        $book = $stmt->fetchAll(PDO::FETCH_OBJ);
-        $db = null;
-        echo json_encode($book);
-    } catch (PDOException $e) {
-        echo '{"error": {"text": ' . $e->getMessage() . '}}';
-    }
-});
+        if ($book) {
+            echo "Book Title: " . $book->getTitle() . "<br>" .
+                 "Book Author: " . $book->getAuthor() . "<br>" .
+                 "Book Published Date: " . $book->getDatePublished() . "<br>" .
+                 "Number of Pages: " . $book->getPages() . "<br><br>";
+        } else {
+            echo "There is no book with id " . $id . ".";
+        }
+    });
 
-// Add Book
-$app->post('/api/books', function (Request $request, Response $response){
-    $title = $request->getParam('title');
-    $author = $request->getParam('author');
-    $date_published = $request->getParam('date_published');
-    $pages = $request->getParam('pages');
+    // Add Book
+    $this->post('', function (Request $request, Response $response) {
+        $title = $request->getParam('title');
+        $author = $request->getParam('author');
+        $date_published = $request->getParam('date_published');
+        $pages = $request->getParam('pages');
 
-    $sql = "INSERT INTO books (title, author, date_published, pages)
-            VALUES(:title, :author, :date_published, :pages)";
+        $bookRepository = $this->getBookRepository;
+        $book = new Book($title, $author, $date_published, $pages);
+        $isBookAdded = $bookRepository->addBook($book);
 
-    try {
-        $db = new db();
-        $db = $db->connect();
+        if ($isBookAdded) {
+            echo "Book was successfully added.";
+        } else {
+            echo "Book was not added.";
+        }
+    });
 
-        $stmt = $db->prepare($sql);
-        $stmt->bindParam(':title', $title);
-        $stmt->bindParam(':author', $author);
-        $stmt->bindParam(':date_published', $date_published);
-        $stmt->bindParam(':pages', $pages);
-        $stmt->execute();
+    // Update Book By ID
+    $this->put('/{id}', function (Request $request, Response $response) {
+        $id = $request->getAttribute('id');
+        $title = $request->getParam('title');
+        $author = $request->getParam('author');
+        $date_published = $request->getParam('date_published');
+        $pages = $request->getParam('pages');
 
-        echo '{"notice": {"text": "Book Added"}}';
-    } catch (PDOException $e) {
-        echo '{"error": {"text": ' . $e->getMessage() . '}}';
-    }
-});
+        $bookRepository = $this->getBookRepository;
+        $newBook = new Book($title, $author, $date_published, $pages);
+        $isBookUpdated = $bookRepository->updateBookById((int) $id, $newBook);
 
-// Update Book
-$app->put('/api/books/{id}', function (Request $request, Response $response){
-    $id = $request->getAttribute('id');
-    $title = $request->getParam('title');
-    $author = $request->getParam('author');
-    $date_published = $request->getParam('date_published');
-    $pages = $request->getParam('pages');
+        if ($isBookUpdated) {
+            echo "Book with id " . $id . " was successfully updated.";
+        } else {
+            echo "Book with the specified id of " . $id . " was not updated.";
+        }
+    });
 
-    $sql = "UPDATE books 
-            SET title           = :title, 
-                author          = :author,
-                date_published  = :date_published,
-                pages           = :pages
-            WHERE id = $id";
+    // Delete Book By ID
+    $this->delete('/{id}', function (Request $request, Response $response){
+        $id = $request->getAttribute('id');
 
-    try {
-        $db = new db();
-        $db = $db->connect();
+        $bookRepository = $this->getBookRepository;
+        $isBookDeleted = $bookRepository->deleteBookById($id);
 
-        $stmt = $db->prepare($sql);
-        $stmt->bindParam(':title', $title);
-        $stmt->bindParam(':author', $author);
-        $stmt->bindParam(':date_published', $date_published);
-        $stmt->bindParam(':pages', $pages);
-
-        $stmt->execute();
-
-        echo '{"notice": {"text": "Book Updated"}}';
-    } catch (PDOException $e) {
-        echo '{"error": {"text": ' . $e->getMessage() . '}}';
-    }
-});
-
-// Delete Book
-$app->delete('/api/books/{id}', function (Request $request, Response $response){
-    $id = $request->getAttribute('id');
-    $sql = "DELETE FROM books WHERE id = $id";
-
-    try {
-        $db = new db();
-        $db = $db->connect();
-
-        $stmt = $db->prepare($sql);
-        $stmt->execute();
-        $db = null;
-        echo '{"notice": {"text": "Book Deleted"}}';
-    } catch (PDOException $e) {
-        echo '{"error": {"text": ' . $e->getMessage() . '}}';
-    }
+        if ($isBookDeleted) {
+            echo "Book with id " . $id . " was successfully deleted.";
+        } else {
+            echo "Book with the specified id of " . $id . " was not deleted.";
+        }
+    });
 });

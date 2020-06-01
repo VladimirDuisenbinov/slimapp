@@ -1,20 +1,25 @@
 <?php
 require '../vendor/autoload.php';
-require '../src/config/db.php';
+require '../src/config/DBConnection.php';
+require '/var/www/src/repositories/BookRepository.php';
+
+use \Repositories\BookRepository;
 
 $app = new Slim\App();
 
-$db = new db();
-$db = $db->connect();
+$container = $app->getContainer();
+$container['getDatabasePDO'] = function ($container) {
+    $dbConnection = new DBConnection();
+    $pdo = $dbConnection->connect();
 
-$sql = "CREATE TABLE IF NOT EXISTS books (
-            id INT (11) NOT NULL AUTO_INCREMENT,
-            title VARCHAR (255) NOT NULL,
-            author VARCHAR (255) NOT NULL,
-            date_published VARCHAR (255) NOT NULL,
-            pages VARCHAR (255) NOT NULL, PRIMARY KEY (id)
-        )";
-$db->exec($sql);
+    return $pdo;
+};
+
+$container['getBookRepository'] = function () use ($container) {
+    $bookRepository = new BookRepository($container['getDatabasePDO']);
+
+    return $bookRepository;
+};
 
 // Book Routes
 require '../src/routes/books.php';
