@@ -1,6 +1,6 @@
 <?php
 
-class db {
+class DBConnection {
     private $dbhost = 'slimapp_db_1';
     private $dbuser = 'admin';
     private $dbpass = 'admin';
@@ -13,9 +13,5 @@ class db {
         $dbConnection->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
         return $dbConnection;
-    }
-
-    public function getDbName() {
-        return $this->dbname;
     }
 }
